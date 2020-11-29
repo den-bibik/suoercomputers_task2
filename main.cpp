@@ -32,7 +32,7 @@ public:
 double F_func(point2d<double> point){
     // calculated from F(x,y) = -laplass(u) + q(x, y) * u,  u = 1 + cos(pi * x * y), k = 4 + x + y, z = 0
     double x = point.values[0]; double y = point.values[1];
-    return -M_PI * (M_PI * (x + y + 4) * (x * x + y * y) * cos(M_PI * x * y) - (x + y));
+    return M_PI * (M_PI * (x + y + 4) * (x * x + y * y) * cos(M_PI * x * y) + (x + y)*sin(M_PI * x * y));
 }
 
 double psi_R_func(point2d<double> point){
@@ -74,43 +74,26 @@ public:
         border = _border;
         step = _step;
 
-        int values_size = gsize.values[0] * gsize.values[1];
+        int values_size = (gsize.values[0] + 1) * (gsize.values[1] + 1);
         values = new double[values_size];
     }
 
-    Grid2d(double (*init_function)(point2d<double>),
-           point2d<double> border0, point2d<double> border1,
-           point2d<int> grid_size
-    ) {
-        gsize = grid_size;
-        border = border0;
-        step = (border1 - border) / grid_size;
-
-        int values_size = gsize.values[0] * gsize.values[1];
-        values = new double[values_size];
-        for(int i = 0; i <= gsize.values[0]; i++)
-            for(int j = 0; j <= gsize.values[1]; j++){
-                auto p = point2d<int>(i,j);
-                set_value(p, init_function(get_coord(p)));
-            }
-    }
-
-    point2d<double> get_coord(point2d<int>) const{
-        return border + step * gsize;
+    point2d<double> get_coord(point2d<int> point) const{
+        return border + step * point;
     }
 
     double get_value(point2d<int> p) const{
-        return values[p.values[0] * gsize.values[1] + p.values[1]];
+        return values[p.values[0] * (gsize.values[1] + 1) + p.values[1]];
     }
 
     void set_value(point2d<int> position, double val){
-        values[position.values[0] * gsize.values[1] + position.values[1]] = val;
+        values[position.values[0] * (gsize.values[1] + 1) + position.values[1]] = val;
     }
 
     void dump() const{
         std::cout << "matrix dump" << std::endl;
-        for(int i = 0; i <= gsize.values[0]; i++) {
-            for (int j = 0; j <= gsize.values[1]; j++) {
+        for(int j = gsize.values[1]; j >= 0; j--) {
+            for (int i = 0; i <= gsize.values[0]; i++) {
                 auto p = point2d<int>(i, j);
                 std::cout << get_value(p) << " ";
             }
@@ -119,21 +102,44 @@ public:
     }
 
     Grid2d operator-(const Grid2d b) const{
-        int values_size = gsize.values[0] * gsize.values[1];
         Grid2d res = Grid2d(gsize, border, step);
-        for(int i = 0; i < values_size; i++){
-            res.values[i] = values[i] - b.values[i];
+        for(int i = 0; i <= gsize.values[0]; i++) {
+            for (int j = 0; j <= gsize.values[1]; j++) {
+                auto p = point2d<int>(i, j);
+                res.set_value(p, get_value(p) - b.get_value(p));
+            }
         }
         return res;
     }
 
     Grid2d operator*(const double C) const{
-        int values_size = gsize.values[0] * gsize.values[1];
         Grid2d res = Grid2d(gsize, border, step);
-        for(int i = 0; i < values_size; i++){
-            res.values[i] = values[i] * C;
+        for(int i = 0; i <= gsize.values[0]; i++) {
+            for (int j = 0; j <= gsize.values[1]; j++) {
+                auto p = point2d<int>(i, j);
+                res.set_value(p, get_value(p) * C);
+            }
         }
         return res;
+    }
+
+    void print_info() const{
+        double max = -1000000000;
+        double min = 10000000000;
+        double sum = 0.0;
+        for(int i = 0; i <= gsize.values[0]; i++) {
+            for (int j = 0; j <= gsize.values[1]; j++) {
+                auto p = point2d<int>(i, j);
+                double val = get_value(p);
+                if(val > max) max = val;
+                if(val < min) min = val;
+                sum += val;
+
+            }
+        }
+        sum /= (gsize.values[0] + 1) * (gsize.values[1] + 1);
+
+        std::cout << " mean " << sum << " max " << max << " min " << min << std::endl;
     }
 
     double dot_prod(const Grid2d b) const{
@@ -165,8 +171,8 @@ public:
         auto p2 = point2d<int>(p.values[0], p.values[1]);
         p2.values[axis] += 1;
         double res =(
-                    a.get_value(p2) * grad(p2, 0, 0) -
-                    a.get_value(p) * grad(p, 0, 0)
+                    a.get_value(p2) * grad(p2, axis, 0) -
+                    a.get_value(p) * grad(p, axis, 0)
                 ) / step.values[axis];
         return res;
     }
@@ -186,16 +192,17 @@ private:
 Grid2d Aw(Grid2d w, const Grid2d a, const Grid2d b){
     Grid2d res = Grid2d(w.gsize, w.border, w.step);
     // internal points
-    for(int i=1; i<res.gsize.values[0]-1; i++){
-        for(int j=1; j<res.gsize.values[1]-1; j++){
+    for(int i=1; i<=res.gsize.values[0]-1; i++){
+        for(int j=1; j<=res.gsize.values[1]-1; j++){
             auto position = point2d<int>(i, j);
             double value = -w.laplass(position, a, b);
             res.set_value(position, value);
         }
     }
+
     //top (eq. 9)
     int j = res.gsize.values[1];
-    for(int i=1; i<res.gsize.values[0]-1; i++){
+    for(int i=1; i<=res.gsize.values[0]-1; i++){
         auto position = point2d<int>(i, j);
         double step = w.step.values[1];
         double value = 2/step * (
@@ -207,7 +214,7 @@ Grid2d Aw(Grid2d w, const Grid2d a, const Grid2d b){
 
     //bottom (eq. 9)
     j = 0;
-    for(int i=1; i<res.gsize.values[1]-1; i++){
+    for(int i=1; i<=res.gsize.values[1]-1; i++){
         auto position = point2d<int>(i, j);
         auto position_i1 = point2d<int>(i, j + 1);
         double step = w.step.values[1];
@@ -220,7 +227,7 @@ Grid2d Aw(Grid2d w, const Grid2d a, const Grid2d b){
 
     //left (eq. 8)
     int i = 0;
-    for(j=1; j<res.gsize.values[0]-1; j++){
+    for(j=1; j<=res.gsize.values[0]-1; j++){
         auto position = point2d<int>(i, j);
         auto position_1j = point2d<int>(i + 1, j);
         double step = w.step.values[0];
@@ -230,10 +237,10 @@ Grid2d Aw(Grid2d w, const Grid2d a, const Grid2d b){
         ) - w.aw_grad(position, b, 1);
         res.set_value(position, value);
     }
-
     //right (eq. 8)
+
     i = res.gsize.values[1];
-    for(j=1; j<res.gsize.values[0]-1; j++){
+    for(j=1; j<=res.gsize.values[0]-1; j++){
         auto position = point2d<int>(i, j);
         double step = w.step.values[0];
         double value = 2/step * (
@@ -243,12 +250,12 @@ Grid2d Aw(Grid2d w, const Grid2d a, const Grid2d b){
         res.set_value(position, value);
     }
 
-
     //eq 10-13
+    double val;
     auto p00 = point2d<int>(0, 0);
     auto p10 = point2d<int>(1,0);
     auto p01 = point2d<int>(1,0);
-    double val =
+    val =
             -2/res.step.values[0] * a.get_value(p10) * w.grad(p10, 0, 0) +
             -2/res.step.values[1] * b.get_value(p01) * w.grad(p01, 1, 0) +
             (0* 2/res.step.values[0] + 0*2/res.step.values[1]) * w.get_value(p00);
@@ -287,8 +294,8 @@ Grid2d init_B(point2d<int> _gsize, point2d<double> _border, point2d<double> _ste
     Grid2d res = Grid2d(_gsize, _border, _step);
 
     // internal points
-    for(int i=1; i<res.gsize.values[0]-1; i++){
-        for(int j=1; j<res.gsize.values[1]-1; j++){
+    for(int i=1; i<=res.gsize.values[0]-1; i++){
+        for(int j=1; j<=res.gsize.values[1]-1; j++){
             auto position = point2d<int>(i, j);
             double value = F_func(res.get_coord(position));
             res.set_value(position, value);
@@ -297,7 +304,7 @@ Grid2d init_B(point2d<int> _gsize, point2d<double> _border, point2d<double> _ste
 
     //top (eq. 9)
     int j = res.gsize.values[1];
-    for(int i=1; i<res.gsize.values[0]-1; i++){
+    for(int i=1; i<=res.gsize.values[0]-1; i++){
         auto position = point2d<int>(i, j);
         double step = res.step.values[1];
         auto coord = res.get_coord(position);
@@ -307,7 +314,7 @@ Grid2d init_B(point2d<int> _gsize, point2d<double> _border, point2d<double> _ste
 
     //bottom (eq. 9)
     j = 0;
-    for(int i=1; i<res.gsize.values[1]-1; i++){
+    for(int i=1; i<=res.gsize.values[1]-1; i++){
         auto position = point2d<int>(i, j);
         double step = res.step.values[1];
         auto coord = res.get_coord(position);
@@ -317,7 +324,7 @@ Grid2d init_B(point2d<int> _gsize, point2d<double> _border, point2d<double> _ste
 
     //left (eq. 8)
     int i = 0;
-    for(j=1; j<res.gsize.values[0]-1; j++){
+    for(j=1; j<=res.gsize.values[0]-1; j++){
         auto position = point2d<int>(i, j);
         double step = res.step.values[0];
         auto coord = res.get_coord(position);
@@ -327,7 +334,7 @@ Grid2d init_B(point2d<int> _gsize, point2d<double> _border, point2d<double> _ste
 
     //right (eq. 8)
     i = res.gsize.values[1];
-    for(j=1; j<res.gsize.values[0]-1; j++){
+    for(j=1; j<=res.gsize.values[0]-1; j++){
         auto position = point2d<int>(i, j);
         double step = res.step.values[0];
         auto coord = res.get_coord(position);
@@ -336,26 +343,27 @@ Grid2d init_B(point2d<int> _gsize, point2d<double> _border, point2d<double> _ste
     }
 
     // TODO: eq 10-13
-    double coef = 2 / res.step.values[0] + 2 / res.step.values[1];
+    double coef_x = 2 / res.step.values[0];
+    double coef_y = 2 / res.step.values[1];
 
     auto position = point2d<int>(0, 0);
     auto coord = res.get_coord(position);
-    double value = F_func(coord) + coef * psi_R_func(coord);
+    double value = F_func(coord); // psi_L(0,0) ==  psi_B(0,0) == 0
     res.set_value(position, value);
 
     position = point2d<int>(res.gsize.values[0], 0);
     coord = res.get_coord(position);
-    value = F_func(coord) + coef * psi_R_func(coord);
+    value = F_func(coord) + coef_x * psi_R_func(coord) + coef_y * psi_B_func(coord);
     res.set_value(position, value);
 
     position = point2d<int>(0, res.gsize.values[1]);
     coord = res.get_coord(position);
-    value = F_func(coord) + coef * psi_R_func(coord);
+    value = F_func(coord) + coef_x * psi_L_func(coord) + coef_y * psi_T_func(coord);
     res.set_value(position, value);
 
     position = point2d<int>(res.gsize.values[0], res.gsize.values[1]);
     coord = res.get_coord(position);
-    value = F_func(coord) + coef * psi_R_func(coord);
+    value = F_func(coord) + coef_x * psi_R_func(coord) + coef_y * psi_T_func(coord);
     res.set_value(position, value);
 
 
@@ -364,8 +372,8 @@ Grid2d init_B(point2d<int> _gsize, point2d<double> _border, point2d<double> _ste
 
 Grid2d init_k_grid(point2d<int> _gsize, point2d<double> _border, point2d<double> _step, int axis){
     Grid2d res = Grid2d(_gsize, _border, _step);
-    for(int i=0; i<res.gsize.values[0]; i++){
-        for(int j=0; j<res.gsize.values[1]; j++){
+    for(int i=0; i<=res.gsize.values[0]; i++){
+        for(int j=0; j<=res.gsize.values[1]; j++){
             auto position = point2d<int>(i, j);
             auto coord = res.get_coord(position);
             coord.values[axis] -= 0.5 * res.step.values[axis];
@@ -378,12 +386,12 @@ Grid2d init_k_grid(point2d<int> _gsize, point2d<double> _border, point2d<double>
 
 Grid2d init_w_grid(point2d<int> _gsize, point2d<double> _border, point2d<double> _step){
     Grid2d res = Grid2d(_gsize, _border, _step);
-    for(int i=0; i<res.gsize.values[0]; i++){
-        for(int j=0; j<res.gsize.values[1]; j++){
+    for(int i=0; i<=res.gsize.values[0]; i++){
+        for(int j=0; j<=res.gsize.values[1]; j++){
             auto position = point2d<int>(i, j);
-            double val  = (i * i  + j * j + 1) / 1000.0;
-            val = 0.1;
-            res.set_value(position, val);
+            auto coord = res.get_coord(position);
+            double value = u_func(coord);
+            res.set_value(position, value);
         }
     }
     return res;
@@ -391,11 +399,10 @@ Grid2d init_w_grid(point2d<int> _gsize, point2d<double> _border, point2d<double>
 
 Grid2d init_w_test_grid(point2d<int> _gsize, point2d<double> _border, point2d<double> _step){
     Grid2d res = Grid2d(_gsize, _border, _step);
-    for(int i=0; i<res.gsize.values[0]; i++){
-        for(int j=0; j<res.gsize.values[1]; j++){
+    for(int i=0; i<=res.gsize.values[0]; i++){
+        for(int j=0; j<=res.gsize.values[1]; j++){
             auto position = point2d<int>(i, j);
-            double value = u_func(res.get_coord(position));
-            res.set_value(position, value);
+            res.set_value(position, 0.1);
         }
     }
     return res;
@@ -410,39 +417,46 @@ void algo(int size){
 
     //auto w = init_w_grid(gsize, border, step);
     auto w = init_w_test_grid(gsize, border, step); // debug
+    //std::cout << "w" << std::endl; w.dump(); std::cout << std::endl;
     auto w_test = init_w_test_grid(gsize, border, step);
     auto a = init_k_grid(gsize, border, step, 0);
     auto b = init_k_grid(gsize, border, step, 1);
     auto B = init_B(gsize, border, step);
+    //auto B = Aw(w_test, a, b);
 
     double stop_norm = 10000000;
-    for(int i = 0; i<10; i++){
+    for(int i = 0; i<1; i++){
         auto Aw_val = Aw(w, a, b);
         auto r = Aw_val - B;
 
-        std::cout << "Aw_val" << std::endl; Aw_val.dump(); std::cout << std::endl;
-        std::cout << "B" << std::endl; B.dump(); std::cout << std::endl;
-        std::cout << "r" << std::endl; r.dump(); std::cout << std::endl;
-
-
-        std::cout << "r_norm " << r.dot_prod(r) << std::endl;
+        std::cout << " r_norm " << r.dot_prod(r)  << " w_norm " << w.dot_prod(w)<< std::endl;
         auto Ar_val = Aw(r, a, b);
-        double aplha = Ar_val.dot_prod(r) / Ar_val.dot_prod(Ar_val);
-        auto alg_step = r * aplha;
+        std::cout << "Ar_val norm " << Ar_val.dot_prod(Ar_val)
+                << " Ar_val.dot_prod(r)  " << Ar_val.dot_prod(r) << std::endl;
+        double alpha = Ar_val.dot_prod(r) / Ar_val.dot_prod(Ar_val);
+        auto alg_step = r * alpha;
 
         //debug
         stop_norm = alg_step.dot_prod(alg_step);
         auto diff = w - w_test;
+        w = w - alg_step;
+
+        std::cout << "diff info"; diff.print_info();
         std::cout << "stop criterion val: " << stop_norm <<
                     " test: " << diff.dot_prod(diff) <<std::endl;
 
-        w = w - alg_step;
+        //std::cout << "Aw_val" << std::endl; Aw_val.dump(); std::cout << std::endl;
+        //std::cout << "B" << std::endl; B.dump(); std::cout << std::endl;
+        std::cout << "r" << std::endl; r.dump(); std::cout << std::endl;
+        //std::cout << "Ar" << std::endl; Ar_val.dump(); std::cout << std::endl;
+        //std::cout << "w" << std::endl; w.dump(); std::cout << std::endl;
+
     }
 }
 
 int main() {
     std::cout << "Hello, World!" << std::endl;
-    algo(3);
+    algo(300);
     return 0;
 }
 
