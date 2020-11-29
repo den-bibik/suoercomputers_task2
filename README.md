@@ -1,1 +1,1 @@
-# suoercomputers_task2
+# supercomputers_task2
