@@ -78,6 +78,37 @@ public:
         values = new double[values_size];
     }
 
+    Grid2d(const Grid2d& b)
+    {
+        gsize = b.gsize;
+        border = b.border;
+        step = b.step;
+
+        int values_size = (gsize.values[0] + 1) * (gsize.values[1] + 1);
+        values = new double[values_size];
+        memcpy(values, b.values, sizeof(*b.values)*values_size);
+    }
+
+
+
+    *~Grid2d(){
+        //std::cout << "destructor val " << values << std::endl;
+        delete[] values;
+    }
+
+    Grid2d& operator=(const Grid2d& b)
+    {
+        gsize = b.gsize;
+        border = b.border;
+        step = b.step;
+
+        int values_size = (gsize.values[0] + 1) * (gsize.values[1] + 1);
+        //values = new double[values_size];
+        memcpy(values, b.values, sizeof(*b.values)*values_size);
+
+        return *this;
+    }
+
     point2d<double> get_coord(point2d<int> point) const{
         return border + step * point;
     }
@@ -88,9 +119,6 @@ public:
     }
 
     void set_value(point2d<int> position, double val){
-        if(val > 243)
-            3 + 3;
-
         if((position.values[0] < 0)||(position.values[1] < 0)){position.values[0] = 1/0;}
         values[position.values[0] * (gsize.values[1] + 1) + position.values[1]] = val;
     }
@@ -106,7 +134,7 @@ public:
         }
     }
 
-    Grid2d operator-(const Grid2d b) const{
+    Grid2d operator-(const Grid2d& b) const{
         Grid2d res = Grid2d(gsize, border, step);
         for(int i = 0; i <= gsize.values[0]; i++) {
             for (int j = 0; j <= gsize.values[1]; j++) {
@@ -116,6 +144,7 @@ public:
         }
         return res;
     }
+
 
     Grid2d operator*(const double C) const{
         Grid2d res = Grid2d(gsize, border, step);
@@ -128,7 +157,7 @@ public:
         return res;
     }
 
-    Grid2d operator*(const Grid2d b) const{
+    Grid2d operator*(const Grid2d& b) const{
         Grid2d res = Grid2d(gsize, border, step);
         for(int i = 0; i <= gsize.values[0]; i++) {
             for (int j = 0; j <= gsize.values[1]; j++) {
@@ -159,7 +188,7 @@ public:
         std::cout << " mean " << sum << " max " << max << " min " << min << std::endl;
     }
 
-    double dot_prod(const Grid2d b) const{
+    double dot_prod(const Grid2d& b) const{
         int values_size = gsize.values[0] * gsize.values[1];
         double res = 0;
         for(int i = 0; i <= gsize.values[0]; i++) {
@@ -197,7 +226,7 @@ public:
         return result;
     }
 
-    double aw_grad(point2d<int> p, Grid2d a, int axis) const{
+    double aw_grad(point2d<int> p, const Grid2d& a, int axis) const{
         auto p2 = point2d<int>(p.values[0], p.values[1]);
         p2.values[axis] += 1;
         double res =(
@@ -207,7 +236,7 @@ public:
         return res;
     }
 
-    double laplass(point2d<int> p, Grid2d a, Grid2d b) const{
+    double laplass(point2d<int> p, const Grid2d& a, const Grid2d& b) const{
         double res = aw_grad(p, a, 0) + aw_grad(p, b, 1);
         return res;
     }
@@ -219,13 +248,11 @@ private:
 
 };
 
-Grid2d Aw(const Grid2d w, const Grid2d a, const Grid2d b){
+Grid2d Aw(const Grid2d& w, const Grid2d& a, const Grid2d& b){
     Grid2d res = Grid2d(w.gsize, w.border, w.step);
     // internal points
     for(int i=1; i<=res.gsize.values[0]-1; i++){
         for(int j=1; j<=res.gsize.values[1]-1; j++){
-            if ((i==199) & (j==101))
-                3+3;
             auto position = point2d<int>(i, j);
             double value = -w.laplass(position, a, b);
             res.set_value(position, value);
@@ -452,9 +479,6 @@ void algo(int size, int num_iter, bool use_CG, bool debug){
     auto border2 = point2d<double>(2, 1);
     auto step = (border2 - border) / gsize;
 
-    auto tmp = Grid2d(point2d<int>(point2d<int>(2,2)), border, step);
-    tmp.dump();
-    tmp.print_info();
     auto w = init_w_grid(gsize, border, step);
     if(debug){
         w = init_w_test_grid(gsize, border, step);
