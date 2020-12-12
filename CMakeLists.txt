@@ -3,4 +3,7 @@ project(supercomp_matphis)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(supercomp_matphis main.cpp)
+set(sources Grid2d.cpp)
+
+#add_executable(supercomp_matphis main_no_parralel.cpp ${sources})
+add_executable(block block.cpp ${sources})
