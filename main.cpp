@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <vector>
 
 
 template <class T>
@@ -55,12 +56,12 @@ double psi_B_func(point2d<double> point){
     return -M_PI * x * (x + y + 4) * sin(M_PI * x * y);
 }
 
-inline double k_func(point2d<double> point){
+double k_func(point2d<double> point){
     double x = point.values[0]; double y = point.values[1];
     return 4 + x + y;
 }
 
-inline double u_func(point2d<double> point){
+double u_func(point2d<double> point){
     double x = point.values[0]; double y = point.values[1];
     return 1 + cos(M_PI*x*y);
 }
@@ -91,7 +92,7 @@ public:
 
 
 
-    *~Grid2d(){
+    ~Grid2d(){
         //std::cout << "destructor val " << values << std::endl;
         delete[] values;
     }
@@ -583,7 +584,7 @@ void algo(int size, int num_iter, bool use_CG, bool debug){
 
 int main() {
     std::cout << "Hello, World!" << std::endl;
-    algo(1000, 20000, 1, 0);
+    algo(20, 10, 0, 0);
     return 0;
 }
 
