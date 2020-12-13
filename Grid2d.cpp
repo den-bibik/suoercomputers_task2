@@ -7,12 +7,12 @@
 #include "Grid2d.h"
 
 Grid2d::Grid2d(point2d<int> _gsize, point2d<double> _border, point2d<double> _step) {
-    gsize = _gsize;
-    border = _border;
-    step = _step;
+    this->gsize = _gsize;
+    this->border = _border;
+    this->step = _step;
 
     int values_size = (gsize.values[0] + 1) * (gsize.values[1] + 1);
-    values = new double[values_size];
+    this->values = new double[values_size];
 }
 
 Grid2d::Grid2d(const Grid2d &b) {

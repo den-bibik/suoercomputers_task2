@@ -5,8 +5,6 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
-
-
 template <class T>
 class point2d {
 public:
@@ -29,6 +27,7 @@ public:
         return point2d<T>(values[0] * b.values[0], values[1] * b.values[1]);
     }
 };
+
 
 double F_func(point2d<double> point){
     // calculated from F(x,y) = -laplass(u) + q(x, y) * u,  u = 1 + cos(pi * x * y), k = 4 + x + y, z = 0
@@ -584,7 +583,7 @@ void algo(int size, int num_iter, bool use_CG, bool debug){
 
 int main() {
     std::cout << "Hello, World!" << std::endl;
-    algo(20, 10, 0, 0);
+    algo(20, 1000, 0, 0);
     return 0;
 }
 

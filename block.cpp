@@ -8,6 +8,9 @@
 
 using namespace std;
 
+enum border_part {
+    TOP, BOTTOM, LEFT, RIGHT, LT_CORNER, RT_CORNER, LB_CORNER, RB_CORNER
+};
 
 class BlockGrid2d {
 public:
@@ -77,6 +80,47 @@ public:
             return right_border[p.values[0] - bstart.values[0] + 1];
 
         return NAN;
+    }
+
+
+    void set_border_part(border_part key, vector<double> value) {
+        int i, j, start_val;
+        switch (key) {
+            case TOP:
+                i = bstart.values[0];
+                start_val = bstart.values[1];
+                for (j = start_val; j <= bend.values[1]; j++)
+                    this->set_value(point2d<int>(i, j), value[j - start_val]);
+                break;
+            case BOTTOM:
+                i = bend.values[0];
+                start_val = bstart.values[1];
+                for (j = start_val; j <= bend.values[1]; j++)
+                    this->set_value(point2d<int>(i, j), value[j - start_val]);
+                break;
+            case LEFT:
+                j = bstart.values[1];
+                start_val = bstart.values[0];
+                for (i = start_val; i <= bend.values[0]; i++)
+                    this->set_value(point2d<int>(i, j), value[j - start_val]);
+                break;
+            case RIGHT:
+                j = bend.values[1];
+                start_val = bstart.values[0];
+                for (i = start_val; i <= bend.values[0]; i++)
+                    this->set_value(point2d<int>(i, j), value[j - start_val]);
+                break;
+
+
+            case LT_CORNER:
+                break;
+            case RT_CORNER:
+                break;
+            case LB_CORNER:
+                break;
+            case RB_CORNER:
+                break;
+        }
     }
 
     void set_value(point2d<int> p, double val) {
@@ -152,7 +196,10 @@ public:
     point2d<double> border, step;
 
 private:
-    vector<double> values, left_border, right_border, top_border, bottom_border;
+    vector<double> values;
+    vector<double> left_border, right_border, top_border, bottom_border;
+    double lt_corner, lb_corner,  rt_corner, rb_corner;
+
 
     static void copy_data(const BlockGrid2d &from, BlockGrid2d &to) {
         copy(from.values.begin(), from.values.end(), to.values.begin());
@@ -207,8 +254,35 @@ public:
         return matrix[i * num_blocks.values[1] + j];
     }
 
+    void sync_borders() {
+        for (int i = 0; i <= num_blocks.values[0]; i++) {
+            for (int j = 0; j <= num_blocks.values[0]; j++) {
+                send_border_part(i, j, i - 1, j, border_part::TOP, border_part::BOTTOM);
+                send_border_part(i, j, i + 1, j, border_part::BOTTOM, border_part::TOP);
+                send_border_part(i, j, i, j - 1, border_part::LEFT, border_part::RIGHT);
+                send_border_part(i, j, i, j + 1, border_part::RIGHT, border_part::LEFT);
+
+                send_border_part(i, j, i - 1, j - 1, border_part::LT_CORNER, border_part::RB_CORNER);
+                send_border_part(i, j, i + 1, j - 1, border_part::LB_CORNER, border_part::RT_CORNER);
+                send_border_part(i, j, i - 1, j + 1, border_part::RT_CORNER, border_part::LB_CORNER);
+                send_border_part(i, j, i + 1, j + 1, border_part::RB_CORNER, border_part::LT_CORNER);
+            }
+        }
+    }
+
+
     point2d<int> num_blocks;
 private:
+    void send_border_part(int from_i, int from_j, int to_i, int to_j, border_part from_key, border_part to_key) {
+        auto from = this->get(from_i, from_i);
+        if ((to_i >= 0) && (to_i <= num_blocks.values[0]) &&
+            (to_j >= 0) && (to_j <= num_blocks.values[1])) {
+            auto to = this->get(to_i, to_j);
+            to.set_border_part(to_key, from.get_border_part(from_key));
+            this->set(to_i, to_j, to);
+        }
+    }
+
     vector<BlockGrid2d> matrix;
 };
 
@@ -439,9 +513,10 @@ public:
             w_test(gsize, gstart, gstep, num_blocks),
             a(gsize, gstart, gstep, num_blocks),
             b(gsize, gstart, gstep, num_blocks),
+            //don't init
             Aw_val(gsize, gstart, gstep, num_blocks),
             r(gsize, gstart, gstep, num_blocks),
-            Ar_val(gsize, gstart, gstep, num_blocks){
+            Ar_val(gsize, gstart, gstep, num_blocks) {
         for (int i = 0; i < B.num_blocks.values[0]; i++) {
             for (int j = 0; j < B.num_blocks.values[1]; j++) {
                 auto B_block = B.get(i, j);
@@ -449,21 +524,18 @@ public:
                 auto w_test_block = w_test.get(i, j);
                 auto a_block = a.get(i, j);
                 auto b_block = b.get(i, j);
-                auto Aw_val_block = Aw_val.get(i, j);
 
                 B_block = init_B(B_block);
                 w_block = init_w(w_block);
                 w_test_block = init_w_test(w_test_block);
                 a_block = init_k(a_block, 0);
                 b_block = init_k(b_block, 1);
-                Aw_val_block = Aw(Aw_val_block, w_block, a_block, b_block);
 
                 B.set(i, j, B_block);
                 w.set(i, j, w_block);
                 w_test.set(i, j, w_test_block);
                 a.set(i, j, a_block);
                 b.set(i, j, b_block);
-                Aw_val.set(i, j, w_block);
             }
         }
     }
@@ -488,9 +560,11 @@ void block_algo(int size, int x_blocks, int y_blocks, int num_iter) {
                 auto a_block = vars.a.get(i, j);
                 auto b_block = vars.b.get(i, j);
                 auto Aw_val_block = vars.Aw_val.get(i, j);
+                auto w_block = vars.w.get(i, j);
                 auto Ar_val_block = vars.Ar_val.get(i, j);
                 auto r_block = vars.r.get(i, j);
 
+                Aw_val_block = Aw(Aw_val_block, w_block, a_block, b_block);
                 r_block = Aw_val_block - B_block;
                 Ar_val_block = Aw(Ar_val_block, r_block, a_block, b_block);
 
@@ -504,6 +578,7 @@ void block_algo(int size, int x_blocks, int y_blocks, int num_iter) {
         }
         double alpha = alpha_numerator / alpha_denominator;
         //TODO: sync (update) r_block borders
+        vars.r.sync_borders();
 
 
         double stop_norm = 0;
@@ -518,10 +593,11 @@ void block_algo(int size, int x_blocks, int y_blocks, int num_iter) {
 
                 stop_norm += alpha * alpha * r_norm;
                 auto alg_step = r_block * alpha;
-                w_block = w_block - alg_step;
 
                 auto diff = w_block - w_test_block;
                 diff_val += diff.dot_prod(diff);
+
+                w_block = w_block - alg_step;
 
                 vars.w.set(i, j, w_block);
 
@@ -536,7 +612,7 @@ void block_algo(int size, int x_blocks, int y_blocks, int num_iter) {
 
 int main() {
     std::cout << "It's block version" << std::endl;
-    block_algo(20, 1, 1, 10);
+    block_algo(2, 2, 2, 10);
     //algo(20, 100, 1, 0);
     return 0;
 }

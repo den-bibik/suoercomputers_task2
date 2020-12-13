@@ -5,5 +5,5 @@ set(CMAKE_CXX_STANDARD 14)
 
 set(sources Grid2d.cpp)
 
-add_executable(supercomp_matphis main.cpp ${sources})
+add_executable(supercomp_matphis main.cpp)
 add_executable(block block.cpp ${sources})
