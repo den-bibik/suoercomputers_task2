@@ -9,11 +9,12 @@
 using namespace std;
 
 
-class BlockGrid2d{
+class BlockGrid2d {
 public:
-    BlockGrid2d()=default;
+    BlockGrid2d() = default;
+
     BlockGrid2d(point2d<int> block_start, point2d<int> block_end, point2d<int> gsize,
-                point2d<double> border, point2d<double> step){
+                point2d<double> border, point2d<double> step) {
         this->gsize = gsize;
         this->border = border;
         this->step = step;
@@ -42,8 +43,7 @@ public:
         return *this;
     }
 
-    BlockGrid2d(const BlockGrid2d &b):BlockGrid2d(b.bstart, b.bend, b.gsize, b.border, b.step)
-    {
+    BlockGrid2d(const BlockGrid2d &b) : BlockGrid2d(b.bstart, b.bend, b.gsize, b.border, b.step) {
         copy_data(b, *this);
     }
 
@@ -51,7 +51,7 @@ public:
         return this->border + this->step * point;
     }
 
-    double get_value(point2d<int> p) const{
+    double get_value(point2d<int> p) const {
         bool inner[2], valid[2];
         inner[0] = (p.values[0] >= bstart.values[0]) && (p.values[0] <= bend.values[0]);
         inner[1] = (p.values[1] >= bstart.values[1]) && (p.values[1] <= bend.values[1]);
@@ -79,7 +79,7 @@ public:
         return NAN;
     }
 
-    void set_value(point2d<int> p, double val){
+    void set_value(point2d<int> p, double val) {
         values[(p.values[0] - bstart.values[0]) * (bsize.values[1] + 1) + (p.values[1] - bstart.values[1])] = val;
     }
 
@@ -105,7 +105,7 @@ public:
         return res;
     }
 
-    friend BlockGrid2d operator*(const double C, const BlockGrid2d &a){
+    friend BlockGrid2d operator*(const double C, const BlockGrid2d &a) {
         return operator*(a, C);
     }
 
@@ -133,7 +133,7 @@ public:
         return result;
     }
 
-    double aw_grad(point2d<int> p, const BlockGrid2d& a, int axis) const {
+    double aw_grad(point2d<int> p, const BlockGrid2d &a, int axis) const {
         auto p2 = point2d<int>(p.values[0], p.values[1]);
         p2.values[axis] += 1;
         double res = (
@@ -143,7 +143,7 @@ public:
         return res;
     }
 
-    double laplass(point2d<int> p, const BlockGrid2d& a, const BlockGrid2d& b) const {
+    double laplass(point2d<int> p, const BlockGrid2d &a, const BlockGrid2d &b) const {
         double res = aw_grad(p, a, 0) + aw_grad(p, b, 1);
         return res;
     }
@@ -154,7 +154,7 @@ public:
 private:
     vector<double> values, left_border, right_border, top_border, bottom_border;
 
-    static void copy_data(const BlockGrid2d &from, BlockGrid2d &to){
+    static void copy_data(const BlockGrid2d &from, BlockGrid2d &to) {
         copy(from.values.begin(), from.values.end(), to.values.begin());
         copy(from.left_border.begin(), from.left_border.end(), to.left_border.begin());
         copy(from.right_border.begin(), from.right_border.end(), to.right_border.begin());
@@ -179,7 +179,7 @@ public:
                 xsize++;
             }
             block_start.values[1] = 0;
-            
+
             int ymod = gsize.values[1] % num_blocks.values[1];
             for (int j = 0; j < num_blocks.values[0]; j++) {
                 int ysize = block_size.values[0];
@@ -199,11 +199,11 @@ public:
     }
 
 
-    void set(int i, int j, const BlockGrid2d& val) {
+    void set(int i, int j, const BlockGrid2d &val) {
         matrix[i * num_blocks.values[1] + j] = val;
     }
 
-    BlockGrid2d& get(int i, int j) {
+    BlockGrid2d &get(int i, int j) {
         return matrix[i * num_blocks.values[1] + j];
     }
 
@@ -256,7 +256,7 @@ inline double u_func(point2d<double> point) {
 }
 
 
-double calc_Aw_val(const point2d<int> &position,  const BlockGrid2d& w, const BlockGrid2d& a, const BlockGrid2d& b) {
+double calc_Aw_val(const point2d<int> &position, const BlockGrid2d &w, const BlockGrid2d &a, const BlockGrid2d &b) {
     int N = w.gsize.values[0];
     int M = w.gsize.values[1];
     int i = position.values[0];
@@ -324,7 +324,7 @@ double calc_Aw_val(const point2d<int> &position,  const BlockGrid2d& w, const Bl
     return 0;
 }
 
-BlockGrid2d& Aw(BlockGrid2d& Aw, const BlockGrid2d& w, const BlockGrid2d& a, const BlockGrid2d& b) {
+BlockGrid2d &Aw(BlockGrid2d &Aw, const BlockGrid2d &w, const BlockGrid2d &a, const BlockGrid2d &b) {
     for (int i = Aw.bstart.values[0]; i <= Aw.bend.values[0]; i++) {
         for (int j = Aw.bstart.values[1]; j <= Aw.bend.values[1]; j++) {
             auto position = point2d<int>(i, j);
@@ -379,7 +379,7 @@ double calc_B_val(const point2d<int> &position, const point2d<double> &coord,
 }
 
 
-BlockGrid2d& init_B(BlockGrid2d& block) {
+BlockGrid2d &init_B(BlockGrid2d &block) {
     for (int i = block.bstart.values[0]; i <= block.bend.values[0]; i++) {
         for (int j = block.bstart.values[1]; j <= block.bend.values[1]; j++) {
             auto position = point2d<int>(i, j);
@@ -392,7 +392,7 @@ BlockGrid2d& init_B(BlockGrid2d& block) {
 }
 
 
-BlockGrid2d& init_k(BlockGrid2d &block, int axis) {
+BlockGrid2d &init_k(BlockGrid2d &block, int axis) {
     for (int i = block.bstart.values[0]; i <= block.bend.values[0]; i++) {
         for (int j = block.bstart.values[1]; j <= block.bend.values[1]; j++) {
             auto position = point2d<int>(i, j);
@@ -406,7 +406,7 @@ BlockGrid2d& init_k(BlockGrid2d &block, int axis) {
 }
 
 
-BlockGrid2d& init_w_test(BlockGrid2d& block) {
+BlockGrid2d &init_w_test(BlockGrid2d &block) {
     for (int i = block.bstart.values[0]; i <= block.bend.values[0]; i++) {
         for (int j = block.bstart.values[1]; j <= block.bend.values[1]; j++) {
             auto position = point2d<int>(i, j);
@@ -417,7 +417,7 @@ BlockGrid2d& init_w_test(BlockGrid2d& block) {
     return block;
 }
 
-BlockGrid2d& init_w(BlockGrid2d& block) {
+BlockGrid2d &init_w(BlockGrid2d &block) {
     for (int i = block.bstart.values[0]; i <= block.bend.values[0]; i++) {
         for (int j = block.bstart.values[1]; j <= block.bend.values[1]; j++) {
             auto position = point2d<int>(i, j);
@@ -428,71 +428,73 @@ BlockGrid2d& init_w(BlockGrid2d& block) {
 }
 
 
+class AlgoVariables {
+public:
+    BlockContainer B, w, w_test, a, b, Aw_val, r, Ar_val;
+
+    AlgoVariables(point2d<int> gsize, point2d<double> gstart, point2d<double> gstep,
+                  point2d<int> num_blocks) :
+            B(gsize, gstart, gstep, num_blocks),
+            w(gsize, gstart, gstep, num_blocks),
+            w_test(gsize, gstart, gstep, num_blocks),
+            a(gsize, gstart, gstep, num_blocks),
+            b(gsize, gstart, gstep, num_blocks),
+            Aw_val(gsize, gstart, gstep, num_blocks),
+            r(gsize, gstart, gstep, num_blocks),
+            Ar_val(gsize, gstart, gstep, num_blocks){
+        for (int i = 0; i < B.num_blocks.values[0]; i++) {
+            for (int j = 0; j < B.num_blocks.values[1]; j++) {
+                auto B_block = B.get(i, j);
+                auto w_block = w.get(i, j);
+                auto w_test_block = w_test.get(i, j);
+                auto a_block = a.get(i, j);
+                auto b_block = b.get(i, j);
+                auto Aw_val_block = Aw_val.get(i, j);
+
+                B_block = init_B(B_block);
+                w_block = init_w(w_block);
+                w_test_block = init_w_test(w_test_block);
+                a_block = init_k(a_block, 0);
+                b_block = init_k(b_block, 1);
+                Aw_val_block = Aw(Aw_val_block, w_block, a_block, b_block);
+
+                B.set(i, j, B_block);
+                w.set(i, j, w_block);
+                w_test.set(i, j, w_test_block);
+                a.set(i, j, a_block);
+                b.set(i, j, b_block);
+                Aw_val.set(i, j, w_block);
+            }
+        }
+    }
+};
+
 void block_algo(int size, int x_blocks, int y_blocks, int num_iter) {
     auto gsize = point2d<int>(size, size);
     auto border = point2d<double>(0, 0);
     auto border2 = point2d<double>(2, 1);
     auto step = (border2 - border) / gsize;
-
     auto num_blocks = point2d<int>(x_blocks, y_blocks);
 
-    BlockContainer B(gsize, border, step, num_blocks);
-    BlockContainer w(gsize, border, step, num_blocks);
-    BlockContainer w_test(gsize, border, step, num_blocks);
-    BlockContainer a(gsize, border, step, num_blocks);
-    BlockContainer b(gsize, border, step, num_blocks);
-    BlockContainer Aw_val(gsize, border, step, num_blocks);
-
-    auto r = BlockContainer(gsize, border, step, num_blocks);
-
-
-    for (int i = 0; i < B.num_blocks.values[0]; i++) {
-        for (int j = 0; j < B.num_blocks.values[1]; j++) {
-            auto B_block = B.get(i, j);
-            auto w_block = w.get(i, j);
-            auto w_test_block = w_test.get(i, j);
-            auto a_block = a.get(i, j);
-            auto b_block = b.get(i, j);
-            auto Aw_val_block = Aw_val.get(i, j);
-
-            B_block = init_B(B_block);
-            w_block = init_w(w_block);
-            w_test_block = init_w_test(w_test_block);
-            a_block = init_k(a_block, 0);
-            b_block = init_k(b_block, 1);
-            Aw_val_block = Aw(Aw_val_block, w_block, a_block, b_block);
-
-            B.set(i, j, B_block);
-            w.set(i, j, w_block);
-            w_test.set(i, j, w_test_block);
-            a.set(i, j, a_block);
-            b.set(i, j, b_block);
-            Aw_val.set(i, j, w_block);
-        }
-    }
-    //TODO:sync
-
-
-
-    auto Ar_val = BlockContainer(gsize, border, step, num_blocks);
+    AlgoVariables vars(gsize, border, step, num_blocks);
 
     for (int iter = 0; iter < num_iter; iter++) {
         double alpha_numerator = 0;
         double alpha_denominator = 0;
         double r_norm = 0;
-        for (int i = 0; i < B.num_blocks.values[0]; i++) {
-            for (int j = 0; j < B.num_blocks.values[0]; j++) {
-                auto B_block = B.get(i, j);
-                auto a_block = a.get(i, j);
-                auto b_block = b.get(i, j);
-                auto Aw_val_block = Aw_val.get(i, j);
-                auto Ar_val_block = Ar_val.get(i, j);
-                auto r_block = r.get(i, j);
+        for (int i = 0; i < vars.B.num_blocks.values[0]; i++) {
+            for (int j = 0; j < vars.B.num_blocks.values[0]; j++) {
+                auto B_block = vars.B.get(i, j);
+                auto a_block = vars.a.get(i, j);
+                auto b_block = vars.b.get(i, j);
+                auto Aw_val_block = vars.Aw_val.get(i, j);
+                auto Ar_val_block = vars.Ar_val.get(i, j);
+                auto r_block = vars.r.get(i, j);
 
-                r_block =  Aw_val_block - B_block;
+                r_block = Aw_val_block - B_block;
                 Ar_val_block = Aw(Ar_val_block, r_block, a_block, b_block);
 
-                r.set(i, j, r_block);
+                vars.r.set(i, j, r_block);
 
                 //sync: (sum) alpha_numerator, alpha_denominator, r_norm
                 alpha_numerator += Ar_val_block.dot_prod(r_block);
@@ -506,12 +508,12 @@ void block_algo(int size, int x_blocks, int y_blocks, int num_iter) {
 
         double stop_norm = 0;
         double diff_val = 0;
-        for (int i = 0; i < B.num_blocks.values[0]; i++) {
-            for (int j = 0; j < B.num_blocks.values[0]; j++) {
+        for (int i = 0; i < vars.B.num_blocks.values[0]; i++) {
+            for (int j = 0; j < vars.B.num_blocks.values[0]; j++) {
                 //need r_block, w_block, w_test_block
-                auto w_block = w.get(i, j);
-                auto w_test_block = w_test.get(i, j);
-                auto r_block = r.get(i, j);
+                auto w_block = vars.w.get(i, j);
+                auto w_test_block = vars.w_test.get(i, j);
+                auto r_block = vars.r.get(i, j);
 
 
                 stop_norm += alpha * alpha * r_norm;
@@ -521,12 +523,12 @@ void block_algo(int size, int x_blocks, int y_blocks, int num_iter) {
                 auto diff = w_block - w_test_block;
                 diff_val += diff.dot_prod(diff);
 
-                w.set(i, j, w_block);
+                vars.w.set(i, j, w_block);
 
             }
         }
         std::cout << "iter: " << iter << " stop criterion val: " << stop_norm <<
-                  " test: " << diff_val <<std::endl;
+                  " test: " << diff_val << std::endl;
 
     }
 
