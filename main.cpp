@@ -544,7 +544,10 @@ void algo(int size, int num_iter, bool use_CG, bool debug){
             auto r = Aw_val - B;
             auto Ar_val = Aw(r, a, b);
 
-            double alpha = Ar_val.dot_prod(r) / Ar_val.dot_prod(Ar_val);
+
+            double alpha_numerator = Ar_val.dot_prod(r);
+            double alpha_denominator = Ar_val.dot_prod(Ar_val);
+            double alpha = alpha_numerator / alpha_denominator;
             auto alg_step = r * alpha;
 
 
@@ -583,7 +586,7 @@ void algo(int size, int num_iter, bool use_CG, bool debug){
 
 int main() {
     std::cout << "Hello, World!" << std::endl;
-    algo(20, 1000, 0, 0);
+    algo(4, 100, 0, 0);
     return 0;
 }
 
