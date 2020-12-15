@@ -586,7 +586,7 @@ void algo(int size, int num_iter, bool use_CG, bool debug){
 
 int main() {
     std::cout << "Hello, World!" << std::endl;
-    algo(4, 100, 0, 0);
+    algo(100, 100, 0, 0);
     return 0;
 }
 
